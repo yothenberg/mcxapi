@@ -1,0 +1,1 @@
+A CLI to the MaritzCX HTTP API http://developer.maritzcx.com/api/
