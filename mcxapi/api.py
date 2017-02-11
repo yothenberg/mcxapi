@@ -259,7 +259,7 @@ class Case:
                 COL_TIME_TO_RESPOND_GOAL: self.time_to_respond_goal,
                 COL_STATUS: self.status,
                 COL_PRIORITY: self.priority,
-                COL_ACTIVITY_NOTES: ", ".join(str(n) for n in self.activity_notes)}
+                COL_ACTIVITY_NOTES: "\n".join(str(n) for n in self.activity_notes)}
 
         for item in self.items:
             if item.display_answer:
@@ -376,7 +376,7 @@ answer:\n{}""".format(self.case_item_id,
         for leaf_answer in leaf_answers:
             leaf = leaf_answer.root_cause.root_cause_name
             ancestors = " > ".join([c.root_cause_name for c in leaf_answer.root_cause.anchestors])
-            answers = "{}{} > {}, ".format(answers, ancestors, leaf)
+            answers = "{}{} > {}\n".format(answers, ancestors, leaf)
 
         return answers
 

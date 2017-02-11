@@ -1,3 +1,4 @@
 requests
 anytree
 click
+xlsxwriter
