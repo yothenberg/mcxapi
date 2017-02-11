@@ -94,3 +94,5 @@ ENV/
 .scratch
 _todo.taskpaper
 *.csv
+*.xlsx
+*.json

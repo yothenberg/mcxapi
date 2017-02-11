@@ -132,19 +132,18 @@ def write_to_excel(file, fieldnames, rows):
 
     r = 0
     c = 0
-    # header row
-    for fieldname in fieldnames:
-        worksheet.write(r, c, fieldname)
-        c += 1
-
-    # data
-    r = 1
-    c = 0
     try:
+        # header row
+        for fieldname in fieldnames:
+            worksheet.write(r, c, fieldname)
+            c += 1
+
+        # data
+        r = 1
+        c = 0
         for row in rows:
             for fieldname in fieldnames:
                 cell = row.get(fieldname, None)
-                # print("{} - '{}'".format(type(cell), cell))
                 worksheet.write(r, c, cell)
                 c += 1
             r += 1
