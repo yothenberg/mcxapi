@@ -9,6 +9,8 @@ from .api import McxApi
 from collections import namedtuple
 
 logging.basicConfig(level=logging.WARN)
+
+# A tuple containing a list of unique, sorted fieldnames and a list of dicts, rows, that contains the data
 ColumnarFormat = namedtuple('ColumnarFormat', 'fieldnames rows')
 
 FORMAT_EXCEL = 'xlsx'
@@ -17,7 +19,9 @@ FORMAT_JSON = 'json'
 
 
 class McxCli(object):
+    """ Context object for command line arguments
 
+    """
     def __init__(self, user, password, instance, company):
         self.user = user
         self.password = password
@@ -49,11 +53,8 @@ pass_mcxcli = click.make_pass_decorator(McxCli)
 @click.version_option('1.0')
 @click.pass_context
 def cli(ctx, user, password, instance, company, format, verbose):
-    """mzcli is a command line tool that.
+    """Command line entry point
     """
-    # Create a repo object and remember it as as the context object.  From
-    # this point onwards other commands can refer to it by using the
-    # @pass_mzcli decorator.
     ctx.obj = McxCli(user, password, instance, company)
     ctx.obj.format = format
     ctx.obj.verbose = verbose
@@ -63,7 +64,6 @@ def cli(ctx, user, password, instance, company, format, verbose):
 @pass_mcxcli
 def cases(mcxcli):
     """Exports detailed information about active cases assigned to the user
-
     """
     file = "cases.{}".format(mcxcli.format)
     click.echo('Exporting cases assigned to {} from {} to {}'.format(mcxcli.user, mcxcli.company, file))
@@ -80,7 +80,6 @@ def cases(mcxcli):
 @pass_mcxcli
 def inbox(mcxcli):
     """Exports summary information about active cases assigned to the user
-
     """
     file = "case_inbox.{}".format(mcxcli.format)
     click.echo('Exporting case inbox for {} in {} to {}'.format(mcxcli.user, mcxcli.company, file))
@@ -91,6 +90,8 @@ def inbox(mcxcli):
 
 
 def __init_api(mcxcli):
+    """Initiates the api session and authenticates the user
+    """
     api = McxApi(mcxcli.instance, mcxcli.company, mcxcli.user, mcxcli.password)
     api.auth()
 
@@ -98,10 +99,12 @@ def __init_api(mcxcli):
 
 
 def __cases_to_columnar_format(file, cases):
+    """Converts a list of cases to the ColumnarFormat named tuple
+    """
     # convert each case to a dict
     rows = [case.dict for case in cases]
 
-    # find set of unique fieldnames across all cases
+    # Generate a set of unique fieldnames across all cases
     fieldnames = set()
     for row in rows:
         row_fieldnames = list(row.keys())
@@ -153,6 +156,7 @@ def write_to_excel(file, fieldnames, rows):
 
 
 def write_to_csv(filename, fieldnames, rows):
+    # write out the BOM. Using a BOM to help Excel recognize the encoding of the CSV
     with open(filename, 'wb') as csvfile:
         csvfile.write(u'\ufeff'.encode('utf8'))
 

@@ -8,7 +8,7 @@ Inbox = namedtuple('Inbox', 'ids fieldnames cases')
 
 
 class McxApi:
-    base_url = "https://{}.allegiancetech.com/CaseManagement.svc/{}"
+    BASE_URL = "https://{}.allegiancetech.com/CaseManagement.svc/{}"
 
     def __init__(self, instance, company, user, password, headers=None):
         self.log = logging.getLogger('{0.__module__}.{0.__name__}'.format(self.__class__))
@@ -21,7 +21,7 @@ class McxApi:
         self.token = None
 
     def _url(self, endpoint):
-        return self.base_url.format(self.instance, endpoint)
+        return self.BASE_URL.format(self.instance, endpoint)
 
     def _post(self, url, params=None, json={}):
         if self.token:
@@ -40,74 +40,7 @@ class McxApi:
             self.token = result["token"]
 
     def get_case_inbox(self):
-        """
-        {'caseMobileInboxData': {'Rows': [{'CaseId': 51,
-                                           'Columns': [{'CaseQuestionTypeId': 1,
-                                                        'ColumnColorValue': 0,
-                                                        'ColumnName': 'Case ID | Case '
-                                                                      'Status',
-                                                        'ColumnValue': '51 | In '
-                                                                       'Progress',
-                                                        'SortIndex': 0},
-                                                       {'CaseQuestionTypeId': 100,
-                                                        'ColumnColorValue': 0,
-                                                        'ColumnName': 'First Name',
-                                                        'ColumnValue': '',
-                                                        'SortIndex': 1},
-                                                       {'CaseQuestionTypeId': 100,
-                                                        'ColumnColorValue': 0,
-                                                        'ColumnName': 'Last Name',
-                                                        'ColumnValue': '',
-                                                        'SortIndex': 2},
-                                                       {'CaseQuestionTypeId': 100,
-                                                        'ColumnColorValue': 0,
-                                                        'ColumnName': 'Issue category',
-                                                        'ColumnValue': '',
-                                                        'SortIndex': 3},
-                                                       {'CaseQuestionTypeId': 19,
-                                                        'ColumnColorValue': 1,
-                                                        'ColumnName': 'Time To Close',
-                                                        'ColumnValue': '8d 6h',
-                                                        'SortIndex': 4}],
-                                           'IsActionPlan': False,
-                                           'NewMessageCount': 0,
-                                           'RespondentId': 186692,
-                                           'SortIndex': 0,
-                                           'StatusName': 'In Progress'},
-                                          {'CaseId': 50,
-                                           'Columns': [{'CaseQuestionTypeId': 1,
-                                                        'ColumnColorValue': 0,
-                                                        'ColumnName': 'Case ID | Case '
-                                                                      'Status',
-                                                        'ColumnValue': '50 | New',
-                                                        'SortIndex': 0},
-                                                       {'CaseQuestionTypeId': 100,
-                                                        'ColumnColorValue': 0,
-                                                        'ColumnName': 'First Name',
-                                                        'ColumnValue': '',
-                                                        'SortIndex': 1},
-                                                       {'CaseQuestionTypeId': 100,
-                                                        'ColumnColorValue': 0,
-                                                        'ColumnName': 'Last Name',
-                                                        'ColumnValue': '',
-                                                        'SortIndex': 2},
-                                                       {'CaseQuestionTypeId': 100,
-                                                        'ColumnColorValue': 0,
-                                                        'ColumnName': 'Issue category',
-                                                        'ColumnValue': '',
-                                                        'SortIndex': 3},
-                                                       {'CaseQuestionTypeId': 19,
-                                                        'ColumnColorValue': 1,
-                                                        'ColumnName': 'Time To Close',
-                                                        'ColumnValue': '8d 7h',
-                                                        'SortIndex': 4}],
-                                           'IsActionPlan': False,
-                                           'NewMessageCount': 0,
-                                           'RespondentId': 186690,
-                                           'SortIndex': 1,
-                                           'StatusName': 'New'}],
-                                 'TotalNewMessageCount': 0},
-         'statusMessage': 'Successful'}
+        """ Fetches active cases assigned to the user
         """
         url = self._url("getMobileCaseInboxItems")
         json = self._post(url)
@@ -136,8 +69,10 @@ class McxApi:
         return Inbox(ids=case_ids, fieldnames=fieldnames, cases=cases)
 
     def get_case(self, case_id):
+        """ Fetches detailed information about a case
+        """
         url = self._url("getCaseView")
-        payload = {'token': self.token, 'caseId': case_id}
+        payload = {'caseId': case_id}
         json = self._post(url, json=payload)
         case = Case(json["GetCaseViewResult"])
 
@@ -145,58 +80,8 @@ class McxApi:
 
 
 class Case:
+    """ A Case
     """
-    'viewValues': {'ActivityNotes': [],
-                'AlertName': 'detractor ',
-                'CaseId': 51,
-                'CasePriorityId': 29,
-                'CaseRootCauseAnswers': [],
-                'CaseRootCauseTreeIds': ['j7_3', 'j3_4'],
-                'CaseStatusId': 30,
-                'CaseWatchers': [],
-                'CurrentUserId': 'd9c248c6-a4ae-4f8d-b145-5ad2de264a32',
-                'DateClosed': '/Date(-62135427600000+0100)/',
-                'DateClosedFormatted': '',
-                'DateSubmitted': '/Date(1485780932517+0100)/',
-                'DateSubmittedFormatted': '2017-01-30T13:55:32.517+01:00',
-                'DisableCaseReassignmentNotifications': False,
-                'DisableCaseWatcherNotifications': False,
-                'FirstName': 'Anthony',
-                'ItemAnswers': [],
-                'LastName': 'Wright',
-                'ModifiedDate': '/Date(1486501778417+0100)/',
-                'ModifiedDateFormatted': '2017-02-07T22:09:38.417+01:00',
-                'OwnerFullName': 'Anthony Wright',
-                'OwnerUserId': 'd9c248c6-a4ae-4f8d-b145-5ad2de264a32',
-                'ProgramName': 'Samsung Case Management ',
-                'RespondentHash': None,
-                'RespondentId': 186692,
-                'SourceName': '',
-                'SourceResponses': [],
-                'SourceValues': [],
-                'SurveyId': 40,
-                'SurveyName': 'Samsung Survey',
-                'TimeToClose': 733967,
-                'TimeToCloseColor': 1,
-                'TimeToCloseDays': 8,
-                'TimeToCloseDisplay': '8d 11h',
-                'TimeToCloseGoal': 259200,
-                'TimeToCloseGoalDays': 3,
-                'TimeToCloseGoalDisplay': '3d 0h',
-                'TimeToCloseGoalHours': 0,
-                'TimeToCloseHours': 11,
-                'TimeToRespond': 104187,
-                'TimeToRespondColor': 1,
-                'TimeToRespondDays': 1,
-                'TimeToRespondDisplay': '1d 4h',
-                'TimeToRespondGoal': 86400,
-                'TimeToRespondGoalDays': 1,
-                'TimeToRespondGoalDisplay': '1d 0h',
-                'TimeToRespondGoalHours': 0,
-                'TimeToRespondHours': 4,
-                'WatcherType': 0}
-    """
-
     def __init__(self, case_view):
         values = case_view["viewValues"]
         self.case_id = values["CaseId"]
@@ -309,26 +194,7 @@ class Case:
 
 class Item:
     """
-    'CaseViewItems': [{'CaseId': 51,
-                     'CaseItemId': 10154,
-                     'CaseItemText': 'Time to respond',
-                     'CaseProgramId': 11,
-                     'CaseQuestionTypeId': 18,
-                     'DefaultValue': None,
-                     'DropdownValues': [],
-                     'FormatString': '{"labelFontWeight":400}',
-                     'IsEmailAddress': False,
-                     'IsPhoneNumber': False,
-                     'NeededToClose': False,
-                     'ResourceKey': 'caseitem.text10154',
-                     'RootCauseValues': [],
-                     'SourceScaleId': 0,
-                     'isGroupParent': False,
-                     'mobileIndex': 0,
-                     'parentItemID': 0,
-                     'showTimeField': False}]
     """
-
     def __init__(self, values):
         self.case_item_id = values["CaseItemId"]
         self.case_question_type_id = values["CaseQuestionTypeId"]
@@ -445,21 +311,6 @@ answer:\n{}""".format(self.case_item_id,
 
 
 class ActivityNote:
-    """
-    'ActivityNotes': [{
-                    'ActivityNote': 'this is a second activity note',
-                    'ActivityNoteDate': '/Date(1486501766713+0100)/',
-                    'CaseActivityNoteId': 15,
-                    'CaseId': 51,
-                    'FirstName': 'Anthony',
-                    'FullName': 'Anthony Wright',
-                    'HashCode': 'ACDBEF5A470DD47E3320C12565DD6C3D6592423A',
-                    'LastName': 'Wright',
-                    'NoteFile': None,
-                    'UserId': 'd9c248c6-a4ae-4f8d-b145-5ad2de264a32'
-                    }]
-    """
-
     def __init__(self, values):
         self.note = values["ActivityNote"]
         self.date = values["ActivityNoteDate"]
@@ -470,14 +321,6 @@ class ActivityNote:
 
 
 class Dropdown:
-    """
-    'DropdownValues': [{
-                        'Id': -1,
-                        'LocalizedLabel': None,
-                        'Text': 'Select One'
-                      }]
-    """
-
     def __init__(self, values):
         self.id = values["Id"]
         self.text = values["Text"]
@@ -487,17 +330,6 @@ class Dropdown:
 
 
 class RootCause(NodeMixin):
-    """
-    'RootCauseValues': [{
-                      'AllowOtherNode': True,
-                      'CaseItemId': 10172,
-                      'CaseRootCauseId': 50,
-                      'ParentTreeId': '#',
-                      'RootCauseName': 'Product',
-                      'TreeId': 'j7_1'
-                      }]
-    """
-
     def __init__(self, values):
         self.case_item_id = values["CaseItemId"]
         self.case_root_cause_id = values["CaseRootCauseId"]
@@ -515,12 +347,6 @@ class RootCause(NodeMixin):
 
 
 class RootCauseAnswer:
-    """
-    'CaseRootCauseAnswers': [{'CaseItemId': 10172,
-                              'CaseRootCauseId': 51,
-                              'TreeId': 'j7_3'}]
-    """
-
     def __init__(self, values):
         self.case_item_id = values["CaseItemId"]
         self.case_root_cause_id = values["CaseRootCauseId"]
@@ -532,19 +358,6 @@ class RootCauseAnswer:
 
 
 class Answer:
-    """
-    {'BoolValue': False,
-    'CaseId': 51,
-    'CaseItemAnswerId': 23,
-    'CaseItemId': 10171,
-    'CaseQuestionTypeId': 12,
-    'DoubleValue': 0,
-    'IntValue': 0,
-    'IsEmpty': False,
-    'TextValue': 'I called the customer and fixed the problem',
-    'TimeValue': '/Date(-62135427600000+0100)/'}
-    """
-
     def __init__(self, values):
         self.case_item_answer_id = values["CaseItemAnswerId"]
         self.case_item_id = values["CaseItemId"]
@@ -567,17 +380,6 @@ class Answer:
 
 
 class SourceResponse:
-    """
-    'SourceResponses': [{
-                         'Key': 10204,
-                         'Value': {
-                                  'AnswerText': '3',
-                                  'DisplayType': 3,
-                                  'QuestionText': 'Please rate the the level of overall service provided.'
-                                 }
-                        }]
-    """
-
     def __init__(self, values):
         self.case_item_id = values["Key"]
         self.question_text = values["Value"]["QuestionText"]
