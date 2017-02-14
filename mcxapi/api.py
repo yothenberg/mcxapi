@@ -124,7 +124,7 @@ class Case:
 
     @property
     def dict(self):
-        """ Returns a dictionary representation of the standard properties, source_responses, and items with a display_answer
+        """ Returns a dictionary representation of the standard properties, source_responses, and items with an answer
 
         """
         COL_CASE_ID = "Case ID"
@@ -148,18 +148,25 @@ class Case:
                 COL_ACTIVITY_NOTES: "\n".join(str(n) for n in self.activity_notes)}
 
         for item in self.items:
-            if item.display_answer:
+            if item.answer:
                 case[item.case_item_text] = item.display_answer
 
         for source_response in self.source_responses:
-            case[source_response.question_text] = source_response.answer_text
+            # sometimes the source responses don't have a question text so we use the case_item_id for the column header
+            if source_response.question_text:
+                case[source_response.question_text] = source_response.answer_text
+            else:
+                case[str(source_response.case_item_id)] = source_response.answer_text
 
         return case
 
     def _lookup_item_dropdown_value(self, case_question_type_id, value):
         item = self._find_item_by_type(case_question_type_id)
-        dropdown = item._find_dropdown(value)
-        return dropdown.text
+        if item:
+            dropdown = item._find_dropdown(value)
+            return dropdown.text
+        else:
+            return None
 
     def _parse_items(self, items):
         for item_dict in items:
@@ -187,10 +194,20 @@ class Case:
             self.source_responses.append(SourceResponse(source_response_dict))
 
     def _find_item(self, case_item_id):
-        return next(x for x in self.items if x.case_item_id == case_item_id)
+        try:
+            item = next(x for x in self.items if x.case_item_id == case_item_id)
+        except StopIteration:
+            return None
+
+        return item
 
     def _find_item_by_type(self, case_question_type_id):
-        return next(x for x in self.items if x.case_question_type_id == case_question_type_id)
+        try:
+            item = next(x for x in self.items if x.case_question_type_id == case_question_type_id)
+        except StopIteration:
+            return None
+
+        return item
 
 
 class Item:
@@ -296,7 +313,9 @@ answer:\n{}""".format(self.case_item_id,
 
     def add_answer(self, values):
         self.answer = Answer(values)
-        if self.case_question_type_id in [self.SHORT_TEXT_BOX, self.LONG_TEXT_BOX, self.DATE_PICKER]:
+        if self.answer.is_empty:
+            self.display_value = ""
+        elif self.case_question_type_id in [self.SHORT_TEXT_BOX, self.LONG_TEXT_BOX, self.DATE_PICKER]:
             self.display_answer = self.answer.text_value
         elif self.case_question_type_id == self.NUMERIC:
             self.display_answer = self.answer.double_value

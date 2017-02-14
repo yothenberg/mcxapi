@@ -8,7 +8,7 @@ import json
 from .api import McxApi
 from collections import namedtuple
 
-logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.INFO)
 
 # A tuple containing a list of unique, sorted fieldnames and a list of dicts, rows, that contains the data
 ColumnarFormat = namedtuple('ColumnarFormat', 'fieldnames rows')
@@ -71,7 +71,13 @@ def cases(mcxcli):
     api = __init_api(mcxcli)
     inbox = api.get_case_inbox()
     click.echo('Exporting case_ids: {}'.format(inbox.ids))
-    cases = [api.get_case(case_id) for case_id in inbox.ids]
+
+    cases = []
+    for case_id in inbox.ids:
+        click.echo('Exporting case_id: {}'.format(case_id))
+        cases.append(api.get_case(case_id))
+
+    # cases.append(api.get_case(1214))
     output = __cases_to_columnar_format(file, cases)
     __write_to_file(mcxcli, file, output.fieldnames, output.rows)
 
