@@ -9,6 +9,7 @@ Inbox = namedtuple('Inbox', 'ids fieldnames cases')
 
 class McxApi:
     BASE_URL = "https://{}.allegiancetech.com/CaseManagement.svc/{}"
+    TIMEOUT = 30
 
     def __init__(self, instance, company, user, password, headers=None):
         self.log = logging.getLogger('{0.__module__}.{0.__name__}'.format(self.__class__))
@@ -27,7 +28,7 @@ class McxApi:
         if self.token:
             json["token"] = self.token
         self.log.info("url: {}\n json: {}".format(url, json))
-        r = self.session.post(url, params=params, json=json)
+        r = self.session.post(url, params=params, json=json, timeout=self.TIMEOUT)
         r.raise_for_status()
         return r.json()
 
