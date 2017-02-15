@@ -8,7 +8,27 @@ import json
 from .api import McxApi
 from collections import namedtuple
 
-logging.basicConfig(level=logging.INFO)
+
+def configure_logging():
+    formatter = logging.Formatter("mcx: %(asctime)s - %(levelname)s - %(message)s")
+    logger = logging.getLogger()
+    logger.level = logging.INFO
+
+    info_file_handler = logging.FileHandler("mcx.log")
+    info_file_handler.setFormatter(formatter)
+    info_file_handler.setLevel(logging.INFO)
+    logger.addHandler(info_file_handler)
+
+    error_file_handler = logging.FileHandler("mcx.err")
+    error_file_handler.setFormatter(formatter)
+    error_file_handler.setLevel(logging.ERROR)
+    logger.addHandler(error_file_handler)
+
+    error_stream_handler = logging.StreamHandler(sys.stderr)
+    error_stream_handler.setFormatter(formatter)
+    error_stream_handler.setLevel(logging.ERROR)
+    logger.addHandler(error_stream_handler)
+
 
 # A tuple containing a list of unique, sorted fieldnames and a list of dicts, rows, that contains the data
 ColumnarFormat = namedtuple('ColumnarFormat', 'fieldnames rows')
@@ -49,15 +69,14 @@ pass_mcxcli = click.make_pass_decorator(McxCli)
 @click.option('--instance', '-i', envvar='MCX_INSTANCE', help='Instance.', required=True)
 @click.option('--company', '-c', envvar='MCX_COMPANY', help='Company name.', required=True)
 @click.option('--format', '-f', help='Output file format', type=click.Choice([FORMAT_EXCEL, FORMAT_CSV, FORMAT_JSON]), default=FORMAT_EXCEL)
-@click.option('--verbose', '-v', is_flag=True, help='Enables verbose mode.')
 @click.version_option('1.0')
 @click.pass_context
-def cli(ctx, user, password, instance, company, format, verbose):
+def cli(ctx, user, password, instance, company, format):
     """Command line entry point
     """
+    configure_logging()
     ctx.obj = McxCli(user, password, instance, company)
     ctx.obj.format = format
-    ctx.obj.verbose = verbose
 
 
 @cli.command()

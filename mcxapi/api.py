@@ -29,9 +29,10 @@ class McxApi:
     BASE_URL = "https://{}.allegiancetech.com/CaseManagement.svc/{}"
     TIMEOUT = 30
     RETRY = 3
+    PASSWORD_KEY = "password"
+    TOKEN_KEY = "token"
 
     def __init__(self, instance, company, user, password, headers=None):
-        self.log = logging.getLogger('{0.__module__}.{0.__name__}'.format(self.__class__))
         self.instance = instance
         self.company = company
         self.user = user
@@ -40,20 +41,29 @@ class McxApi:
         self.session.headers = headers
         self.token = None
 
+    def _sanitize_json_for_logging(self, json):
+        json_copy = json.copy()
+        if self.PASSWORD_KEY in json_copy:
+            json_copy[self.PASSWORD_KEY] = "*****"
+        if self.TOKEN_KEY in json:
+            json_copy[self.TOKEN_KEY] = "*****"
+
+        return json_copy
+
     def _url(self, endpoint):
         return self.BASE_URL.format(self.instance, endpoint)
 
     def _post(self, url, params=None, json={}):
         if self.token:
-            json["token"] = self.token
-        self.log.info("url: {}\n json: {}".format(url, json))
+            json[self.TOKEN_KEY] = self.token
+        logging.info("POST: url: {} json: {}".format(url, self._sanitize_json_for_logging(json)))
         r = self.session.post(url, params=params, json=json, timeout=self.TIMEOUT)
         r.raise_for_status()
         return r.json()
 
     def auth(self):
         url = self._url("authenticate")
-        payload = {'userName': self.user, 'password': self.password, 'companyName': self.company}
+        payload = {'userName': self.user, self.PASSWORD_KEY: self.password, 'companyName': self.company}
         json = self._post(url, json=payload)
         result = json["AuthenticateResult"]
         if "token" in result:

@@ -96,3 +96,6 @@ _todo.taskpaper
 *.csv
 *.xlsx
 *.json
+mcx.err
+mcx.log
+
