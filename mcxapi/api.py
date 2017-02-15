@@ -10,7 +10,7 @@ Inbox = namedtuple('Inbox', 'ids fieldnames cases')
 
 
 def parse_date(date):
-    # Wierdo date format /Date(milliseconds-since-epoch-+tzoffset)/
+    # Weird date format /Date(milliseconds-since-epoch-+tzoffset)/
     # /Date(1486742990423-0600)/
     # /Date(1486664366563+0100)/
     r = re.compile(r'/Date\((\d+)([-+])(\d{2,2})(\d{2,2})\)/')
