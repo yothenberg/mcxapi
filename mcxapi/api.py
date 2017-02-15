@@ -1,5 +1,7 @@
 import logging
 import requests
+import re
+from datetime import datetime, timezone, timedelta
 
 from collections import namedtuple
 from anytree import RenderTree, NodeMixin
@@ -7,9 +9,26 @@ from anytree import RenderTree, NodeMixin
 Inbox = namedtuple('Inbox', 'ids fieldnames cases')
 
 
+def parse_date(date):
+    # Wierdo date format /Date(milliseconds-since-epoch-+tzoffset)/
+    # /Date(1486742990423-0600)/
+    # /Date(1486664366563+0100)/
+    r = re.compile(r'/Date\((\d+)([-+])(\d{2,2})(\d{2,2})\)/')
+    m = r.match(date)
+    if m is None:
+        return "Unknown Date Format"
+    else:
+        milliseconds, sign, tzhours, tzminutes = m.groups()
+        seconds = int(milliseconds) / 1000.0
+        sign = -1 if sign == '-' else 1
+        tzinfo = timezone(sign * timedelta(hours=int(tzhours), minutes=int(tzminutes)))
+        return datetime.fromtimestamp(seconds, tzinfo).strftime('%Y-%m-%d %H:%M%z')
+
+
 class McxApi:
     BASE_URL = "https://{}.allegiancetech.com/CaseManagement.svc/{}"
     TIMEOUT = 30
+    RETRY = 3
 
     def __init__(self, instance, company, user, password, headers=None):
         self.log = logging.getLogger('{0.__module__}.{0.__name__}'.format(self.__class__))
@@ -135,7 +154,6 @@ class Case:
         COL_TIME_TO_RESPOND_GOAL = "Time To Goal Respond"
         COL_STATUS = "Status"
         COL_PRIORITY = "Priority"
-        COL_ACTIVITY_NOTES = "Activity Notes"
 
         case = {COL_CASE_ID: self.case_id,
                 COL_OWNER: self.owner,
@@ -144,12 +162,20 @@ class Case:
                 COL_TIME_TO_RESPOND: self.time_to_respond,
                 COL_TIME_TO_RESPOND_GOAL: self.time_to_respond_goal,
                 COL_STATUS: self.status,
-                COL_PRIORITY: self.priority,
-                COL_ACTIVITY_NOTES: "\n".join(str(n) for n in self.activity_notes)}
+                COL_PRIORITY: self.priority}
 
         for item in self.items:
             if item.answer:
                 case[item.case_item_text] = item.display_answer
+
+        # Activity notes are exported one per column
+        i = 1
+        COL_ACTIVITY_NOTES = "Activity Note {}"
+        for activity_note in self.activity_notes:
+            case[COL_ACTIVITY_NOTES.format(i)] = "{} @ {}: {}".format(activity_note.full_name,
+                                                                      parse_date(activity_note.date),
+                                                                      activity_note.note)
+            i += 1
 
         for source_response in self.source_responses:
             # sometimes the source responses don't have a question text so we use the case_item_id for the column header
