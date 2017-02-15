@@ -231,20 +231,10 @@ class Case:
             self.source_responses.append(SourceResponse(source_response_dict))
 
     def _find_item(self, case_item_id):
-        try:
-            item = next(x for x in self.items if x.case_item_id == case_item_id)
-        except StopIteration:
-            return None
-
-        return item
+        return next((x for x in self.items if x.case_item_id == case_item_id), None)
 
     def _find_item_by_type(self, case_question_type_id):
-        try:
-            item = next(x for x in self.items if x.case_question_type_id == case_question_type_id)
-        except StopIteration:
-            return None
-
-        return item
+        return next((x for x in self.items if x.case_question_type_id == case_question_type_id), None)
 
 
 class Item:
@@ -318,12 +308,7 @@ answer:\n{}""".format(self.case_item_id,
                 root_cause.parent = self._find_root_cause(root_cause.parent_tree_id)
 
     def _find_root_cause(self, tree_id):
-        try:
-            root_cause = next(r for r in self.root_cause_values if r.tree_id == tree_id)
-        except StopIteration:
-            return None
-
-        return root_cause
+        return next((r for r in self.root_cause_values if r.tree_id == tree_id), None)
 
     # case_question_type_ids
     CASE_ID = 1
@@ -351,12 +336,7 @@ answer:\n{}""".format(self.case_item_id,
     NUMERIC = 27
 
     def _find_dropdown(self, value):
-        try:
-            dropdown = next(x for x in self.dropdown_values if x.id == value)
-        except StopIteration:
-            return None
-
-        return dropdown
+        return next((x for x in self.dropdown_values if x.id == value), None)
 
     def add_answer(self, values):
         self.answer = Answer(values)
