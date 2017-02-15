@@ -1,10 +1,12 @@
 import logging
 import requests
 import re
-from datetime import datetime, timezone, timedelta
 
+from datetime import datetime, timezone, timedelta
 from collections import namedtuple
 from anytree import RenderTree, NodeMixin
+
+from .exceptions import McxNetworkError, McxParsingError
 
 Inbox = namedtuple('Inbox', 'ids fieldnames cases')
 
@@ -27,8 +29,8 @@ def parse_date(date):
 
 class McxApi:
     BASE_URL = "https://{}.allegiancetech.com/CaseManagement.svc/{}"
-    TIMEOUT = 30
-    RETRY = 3
+    TIMEOUT = 15
+    RETRY_COUNT = 3
     PASSWORD_KEY = "password"
     TOKEN_KEY = "token"
 
@@ -56,9 +58,23 @@ class McxApi:
     def _post(self, url, params=None, json={}):
         if self.token:
             json[self.TOKEN_KEY] = self.token
+
         logging.info("POST: url: {} json: {}".format(url, self._sanitize_json_for_logging(json)))
-        r = self.session.post(url, params=params, json=json, timeout=self.TIMEOUT)
-        r.raise_for_status()
+        retries = self.RETRY_COUNT + 1
+        while retries:
+            try:
+                r = self.session.post(url, params=params, json=json, timeout=self.TIMEOUT)
+                r.raise_for_status()
+            except requests.exceptions.Timeout as e:
+                retries -= 1
+                if retries == 0:
+                    raise McxNetworkError(url, e)
+                logging.info("RETRYING: url: {} json: {}".format(url, self._sanitize_json_for_logging(json)))
+            except requests.exceptions.RequestException as e:
+                raise McxNetworkError(url, e)
+            else:
+                retries = 0
+
         return r.json()
 
     def auth(self):
@@ -78,23 +94,26 @@ class McxApi:
         case_ids = []
         fieldnames = []
         cases = []
-        for row in rows:
-            case = {}
-            for key, val in row.items():
-                # special case for the nested list of n columns
-                if key == "Columns":
-                    for column in val:
-                        column_name = column["ColumnName"]
-                        if column_name not in fieldnames:
-                            fieldnames.append(column_name)
-                        case[column_name] = column["ColumnValue"]
-                else:
-                    if key not in fieldnames:
-                        fieldnames.append(key)
-                    if key == "CaseId":
-                        case_ids.append(val)
-                    case[key] = val
-            cases.append(case)
+        try:
+            for row in rows:
+                case = {}
+                for key, val in row.items():
+                    # special case for the nested list of n columns
+                    if key == "Columns":
+                        for column in val:
+                            column_name = column["ColumnName"]
+                            if column_name not in fieldnames:
+                                fieldnames.append(column_name)
+                            case[column_name] = column["ColumnValue"]
+                    else:
+                        if key not in fieldnames:
+                            fieldnames.append(key)
+                        if key == "CaseId":
+                            case_ids.append(val)
+                        case[key] = val
+                cases.append(case)
+        except Exception as e:
+            raise McxParsingError(json, e, "Unable to parse inbox")
 
         return Inbox(ids=case_ids, fieldnames=fieldnames, cases=cases)
 
@@ -104,7 +123,10 @@ class McxApi:
         url = self._url("getCaseView")
         payload = {'caseId': case_id}
         json = self._post(url, json=payload)
-        case = Case(json["GetCaseViewResult"])
+        try:
+            case = Case(json["GetCaseViewResult"])
+        except Exception as e:
+            raise McxParsingError(json, e, "Unable to parse case {}".format(case_id))
 
         return case
 

@@ -5,8 +5,10 @@ import xlsxwriter
 import logging
 import json
 
-from .api import McxApi
 from collections import namedtuple
+
+from .exceptions import McxError
+from .api import McxApi
 
 
 def configure_logging():
@@ -30,7 +32,7 @@ def configure_logging():
     logger.addHandler(error_stream_handler)
 
 
-# A tuple containing a list of unique, sorted fieldnames and a list of dicts, rows, that contains the data
+# A tuple containing a list of unique, sorted fieldnames and a list of rows (dicts), that contains the data
 ColumnarFormat = namedtuple('ColumnarFormat', 'fieldnames rows')
 
 FORMAT_EXCEL = 'xlsx'
@@ -40,7 +42,6 @@ FORMAT_JSON = 'json'
 
 class McxCli(object):
     """ Context object for command line arguments
-
     """
     def __init__(self, user, password, instance, company):
         self.user = user
@@ -48,12 +49,12 @@ class McxCli(object):
         self.instance = instance
         self.company = company
         self.config = {}
-        self.verbose = False
+        self.debug = False
         self.format = FORMAT_EXCEL
 
     def set_config(self, key, value):
         self.config[key] = value
-        if self.verbose:
+        if self.debug:
             click.echo('  config[%s] = %s' % (key, value), file=sys.stderr)
 
     def __repr__(self):
@@ -69,14 +70,16 @@ pass_mcxcli = click.make_pass_decorator(McxCli)
 @click.option('--instance', '-i', envvar='MCX_INSTANCE', help='Instance.', required=True)
 @click.option('--company', '-c', envvar='MCX_COMPANY', help='Company name.', required=True)
 @click.option('--format', '-f', help='Output file format', type=click.Choice([FORMAT_EXCEL, FORMAT_CSV, FORMAT_JSON]), default=FORMAT_EXCEL)
+@click.option('--debug', '-d', is_flag=True, help='Output stack trace for any errors')
 @click.version_option('1.0')
 @click.pass_context
-def cli(ctx, user, password, instance, company, format):
+def cli(ctx, user, password, instance, company, format, debug):
     """Command line entry point
     """
     configure_logging()
     ctx.obj = McxCli(user, password, instance, company)
     ctx.obj.format = format
+    ctx.obj.debug = debug
 
 
 @cli.command()
@@ -88,20 +91,24 @@ def cases(mcxcli, case_ids):
     file = "cases.{}".format(mcxcli.format)
     click.echo('Exporting cases assigned to {} from {} to {}'.format(mcxcli.user, mcxcli.company, file))
 
-    api = __init_api(mcxcli)
-    ids = case_ids
-    if not case_ids:
-        ids = api.get_case_inbox().ids
+    try:
+        api = __init_api(mcxcli)
+        ids = case_ids
+        if not case_ids:
+            ids = api.get_case_inbox().ids
 
-    click.echo('Exporting case_ids: {}'.format(ids))
+        click.echo('CaseIDs in Inbox: {}'.format(ids))
 
-    cases = []
-    for case_id in ids:
-        click.echo('Exporting case_id: {}'.format(case_id))
-        cases.append(api.get_case(case_id))
-
-    output = __cases_to_columnar_format(file, cases)
-    __write_to_file(mcxcli, file, output.fieldnames, output.rows)
+        cases = []
+        for case_id in ids:
+            click.echo('Exporting CaseId: {}'.format(case_id))
+            cases.append(api.get_case(case_id))
+    except McxError as e:
+        logging.error(e, exc_info=mcxcli.debug)
+        raise click.Abort()
+    else:
+        output = __cases_to_columnar_format(file, cases)
+        __write_to_file(mcxcli, file, output.fieldnames, output.rows)
 
 
 @cli.command()
@@ -112,9 +119,14 @@ def inbox(mcxcli):
     file = "case_inbox.{}".format(mcxcli.format)
     click.echo('Exporting case inbox for {} in {} to {}'.format(mcxcli.user, mcxcli.company, file))
 
-    api = __init_api(mcxcli)
-    inbox = api.get_case_inbox()
-    __write_to_file(mcxcli, file, inbox.fieldnames, inbox.cases)
+    try:
+        api = __init_api(mcxcli)
+        inbox = api.get_case_inbox()
+    except McxError as e:
+        logging.error(e, exc_info=mcxcli.debug)
+        raise click.Abort()
+    else:
+        __write_to_file(mcxcli, file, inbox.fieldnames, inbox.cases)
 
 
 def __init_api(mcxcli):
