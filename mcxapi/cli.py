@@ -61,23 +61,26 @@ def cli(ctx, user, password, instance, company, format, verbose):
 
 
 @cli.command()
+@click.argument('case_ids', nargs=-1, type=click.INT)
 @pass_mcxcli
-def cases(mcxcli):
+def cases(mcxcli, case_ids):
     """Exports detailed information about active cases assigned to the user
     """
     file = "cases.{}".format(mcxcli.format)
     click.echo('Exporting cases assigned to {} from {} to {}'.format(mcxcli.user, mcxcli.company, file))
 
     api = __init_api(mcxcli)
-    inbox = api.get_case_inbox()
-    click.echo('Exporting case_ids: {}'.format(inbox.ids))
+    ids = case_ids
+    if not case_ids:
+        ids = api.get_case_inbox().ids
+
+    click.echo('Exporting case_ids: {}'.format(ids))
 
     cases = []
-    for case_id in inbox.ids:
+    for case_id in ids:
         click.echo('Exporting case_id: {}'.format(case_id))
         cases.append(api.get_case(case_id))
 
-    # cases.append(api.get_case(1214))
     output = __cases_to_columnar_format(file, cases)
     __write_to_file(mcxcli, file, output.fieldnames, output.rows)
 
