@@ -175,7 +175,7 @@ class Case:
                 COL_PRIORITY: self.priority}
 
         for item in self.items:
-            if item.answer:
+            if item.answer or item.root_cause_answers:
                 case[item.case_item_text] = item.display_answer
 
         # Activity notes are exported one per column
