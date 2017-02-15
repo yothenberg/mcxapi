@@ -123,6 +123,9 @@ class Case:
         self.time_to_respond_goal = values["TimeToRespondGoalDisplay"]
         self.status_id = values["CaseStatusId"]
         self.priority_id = values["CasePriorityId"]
+        self.respondent_id = values["RespondentId"]
+        self.survey_id = values["SurveyId"]
+        self.survey_name = values["SurveyName"]
         self.status = ""
         self.priority = ""
         self.activity_notes = []
@@ -164,6 +167,9 @@ class Case:
         COL_TIME_TO_RESPOND_GOAL = "Time To Goal Respond"
         COL_STATUS = "Status"
         COL_PRIORITY = "Priority"
+        COL_RESPONDEND_ID = "Respondent Id"
+        COL_SURVEY_ID = "Survey Id"
+        COL_SURVEY_NAME = "Survey Name"
 
         case = {COL_CASE_ID: self.case_id,
                 COL_OWNER: self.owner,
@@ -172,7 +178,10 @@ class Case:
                 COL_TIME_TO_RESPOND: self.time_to_respond,
                 COL_TIME_TO_RESPOND_GOAL: self.time_to_respond_goal,
                 COL_STATUS: self.status,
-                COL_PRIORITY: self.priority}
+                COL_PRIORITY: self.priority,
+                COL_RESPONDEND_ID: self.respondent_id,
+                COL_SURVEY_ID: self.survey_id,
+                COL_SURVEY_NAME: self.survey_name}
 
         for item in self.items:
             if item.answer or item.root_cause_answers:
