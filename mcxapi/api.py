@@ -200,9 +200,10 @@ class Case:
         item = self._find_item_by_type(case_question_type_id)
         if item:
             dropdown = item._find_dropdown(value)
-            return dropdown.text
-        else:
-            return None
+            if dropdown:
+                return dropdown.text
+
+        return None
 
     def _parse_items(self, items):
         for item_dict in items:
@@ -215,7 +216,7 @@ class Case:
 
     def _parse_item_answers(self, item_answers):
         for item_answer_dict in item_answers:
-            item = next(x for x in self.items if x.case_item_id == item_answer_dict["CaseItemId"])
+            item = self._find_item(item_answer_dict["CaseItemId"])
             if item:
                 item.add_answer(item_answer_dict)
 
@@ -317,7 +318,12 @@ answer:\n{}""".format(self.case_item_id,
                 root_cause.parent = self._find_root_cause(root_cause.parent_tree_id)
 
     def _find_root_cause(self, tree_id):
-        return next(r for r in self.root_cause_values if r.tree_id == tree_id)
+        try:
+            root_cause = next(r for r in self.root_cause_values if r.tree_id == tree_id)
+        except StopIteration:
+            return None
+
+        return root_cause
 
     # case_question_type_ids
     CASE_ID = 1
@@ -345,7 +351,12 @@ answer:\n{}""".format(self.case_item_id,
     NUMERIC = 27
 
     def _find_dropdown(self, value):
-        return next(x for x in self.dropdown_values if x.id == value)
+        try:
+            dropdown = next(x for x in self.dropdown_values if x.id == value)
+        except StopIteration:
+            return None
+
+        return dropdown
 
     def add_answer(self, values):
         self.answer = Answer(values)
@@ -357,7 +368,8 @@ answer:\n{}""".format(self.case_item_id,
             self.display_answer = self.answer.double_value
         elif self.case_question_type_id == self.DROPDOWN:
             dropdown = self._find_dropdown(self.answer.int_value)
-            self.display_answer = dropdown.text
+            if dropdown:
+                self.display_answer = dropdown.text
 
     def add_root_cause_answer(self, values):
         answer = RootCauseAnswer(values)
