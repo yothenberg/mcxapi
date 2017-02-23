@@ -135,6 +135,7 @@ class McxApi:
 class Case:
     """ A Case
     """
+
     def __init__(self, case_view):
         values = case_view["viewValues"]
         self.case_id = values["CaseId"]
@@ -270,8 +271,7 @@ class Case:
 
 
 class Item:
-    """
-    """
+
     def __init__(self, values):
         self.case_item_id = values["CaseItemId"]
         self.case_question_type_id = values["CaseQuestionTypeId"]
@@ -391,6 +391,7 @@ answer:\n{}""".format(self.case_item_id,
 
 
 class ActivityNote:
+
     def __init__(self, values):
         self.note = values["ActivityNote"]
         self.date = values["ActivityNoteDate"]
@@ -401,6 +402,7 @@ class ActivityNote:
 
 
 class Dropdown:
+
     def __init__(self, values):
         self.id = values["Id"]
         self.text = values["Text"]
@@ -410,6 +412,7 @@ class Dropdown:
 
 
 class RootCause(NodeMixin):
+
     def __init__(self, values):
         self.case_item_id = values["CaseItemId"]
         self.case_root_cause_id = values["CaseRootCauseId"]
@@ -427,6 +430,7 @@ class RootCause(NodeMixin):
 
 
 class RootCauseAnswer:
+
     def __init__(self, values):
         self.case_item_id = values["CaseItemId"]
         self.case_root_cause_id = values["CaseRootCauseId"]
@@ -438,6 +442,7 @@ class RootCauseAnswer:
 
 
 class Answer:
+
     def __init__(self, values):
         self.case_item_answer_id = values["CaseItemAnswerId"]
         self.case_item_id = values["CaseItemId"]
@@ -460,6 +465,7 @@ class Answer:
 
 
 class SourceResponse:
+
     def __init__(self, values):
         self.case_item_id = values["Key"]
         self.question_text = values["Value"]["QuestionText"]
