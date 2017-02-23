@@ -97,6 +97,7 @@ class McxApi:
         try:
             for row in rows:
                 case = {}
+                row["Inbox Owner"] = self.user
                 for key, val in row.items():
                     # special case for the nested list of n columns
                     if key == "Columns":
