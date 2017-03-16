@@ -11,6 +11,13 @@ from .exceptions import McxNetworkError, McxParsingError
 Inbox = namedtuple('Inbox', 'ids fieldnames cases')
 
 
+def ordinal(n):
+    if 10 <= n % 100 < 20:
+        return str(n) + 'th'
+    else:
+        return str(n) + {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, "th")
+
+
 def parse_date(date):
     # Weird date format /Date(milliseconds-since-epoch-+tzoffset)/
     # /Date(1486742990423-0600)/
@@ -88,15 +95,29 @@ class McxApi:
     def get_case_inbox(self):
         """ Fetches active cases assigned to the user
         """
-        url = self._url("getMobileCaseInboxItems")
-        json = self._post(url)
-        rows = json["GetMobileCaseInboxItemsResult"]["caseMobileInboxData"]["Rows"]
         case_ids = []
         fieldnames = []
         cases = []
+        url = self._url("getMobileCaseInboxItems")
+        # Fetches 50 at a time up to a maximum of 100,000 cases
+        for p in range(0, 199):
+            start_count = len(case_ids)
+            payload = {'startPage': p, 'pageSize': 50}
+            print("Fetching {} 50 case_ids from inbox".format(ordinal(p + 1)))
+            json = self._post(url, json=payload)
+            self.parse_case_inbox(json, case_ids, fieldnames, cases)
+            if len(case_ids) == start_count:
+                break
+
+        fieldnames.sort()
+        return Inbox(ids=case_ids, fieldnames=fieldnames, cases=cases)
+
+    def parse_case_inbox(self, json, case_ids, fieldnames, cases):
+        rows = json["GetMobileCaseInboxItemsResult"]["caseMobileInboxData"]["Rows"]
         try:
             for row in rows:
                 case = {}
+                case_id = None
                 row["Inbox Owner"] = self.user
                 for key, val in row.items():
                     # special case for the nested list of n columns
@@ -110,13 +131,14 @@ class McxApi:
                         if key not in fieldnames:
                             fieldnames.append(key)
                         if key == "CaseId":
-                            case_ids.append(val)
+                            case_id = val
                         case[key] = val
-                cases.append(case)
+                if case_id not in case_ids:
+                    # Dedupes the cases in case the same case_id is exported multiple times because of paging
+                    case_ids.append(case_id)
+                    cases.append(case)
         except Exception as e:
             raise McxParsingError(json, e, "Unable to parse inbox")
-
-        return Inbox(ids=case_ids, fieldnames=fieldnames, cases=cases)
 
     def get_case(self, case_id):
         """ Fetches detailed information about a case
