@@ -35,7 +35,7 @@ def parse_date(date):
 
 
 class McxApi:
-    BASE_URL = "https://{}.allegiancetech.com/CaseManagement.svc/{}"
+    BASE_URL = "https://{}.mcxplatform.de/CaseManagement.svc/{}"
     TIMEOUT = 15
     RETRY_COUNT = 3
     PASSWORD_KEY = "password"
