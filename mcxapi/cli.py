@@ -123,9 +123,11 @@ def cases(mcxcli, case_ids):
 
             click.echo('CaseIDs to export: {}'.format(ids))
 
+            i = 1
             for case_id in ids:
-                click.echo('Exporting CaseId: {}'.format(case_id))
+                click.echo('Exporting CaseId: {} ({} of {})'.format(case_id, i, len(ids)))
                 cases.append(api.get_case(case_id))
+                i = i + 1
     except McxError as e:
         logging.error(e, exc_info=mcxcli.debug)
         raise click.Abort()
