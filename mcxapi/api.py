@@ -70,6 +70,7 @@ class McxApi:
         retries = self.RETRY_COUNT + 1
         while retries:
             try:
+                print("Timeout: {}".format(self.TIMEOUT))
                 r = self.session.post(url, params=params, json=json, timeout=self.TIMEOUT)
                 r.raise_for_status()
             except requests.exceptions.Timeout as e:
