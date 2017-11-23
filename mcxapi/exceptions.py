@@ -16,10 +16,11 @@ class McxParsingError(McxError):
 
 class McxNetworkError(McxError):
     """Basic exception for network errors raised by McxApi"""
-    def __init__(self, url, original_exception, msg=None):
+    def __init__(self, url, original_exception, msg=None, json=None):
         if msg is None:
             # Set some default useful error message
-            msg = "Networking error for {}".format(url)
+            msg = "Networking error for {} {}".format(url, json)
         super(McxNetworkError, self).__init__("{} : {}".format(msg, original_exception))
         self.url = url
+        self.json = json
         self.original_exception = original_exception

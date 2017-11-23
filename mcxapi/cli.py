@@ -4,7 +4,9 @@ import csv
 import xlsxwriter
 import logging
 import json
+import time
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import namedtuple
 
 from .exceptions import McxError
@@ -16,12 +18,12 @@ def configure_logging():
     logger = logging.getLogger()
     logger.level = logging.INFO
 
-    info_file_handler = logging.FileHandler("mcx.log")
+    info_file_handler = logging.FileHandler("mcx_info.log")
     info_file_handler.setFormatter(formatter)
     info_file_handler.setLevel(logging.INFO)
     logger.addHandler(info_file_handler)
 
-    error_file_handler = logging.FileHandler("mcx.err")
+    error_file_handler = logging.FileHandler("mcx_error.log")
     error_file_handler.setFormatter(formatter)
     error_file_handler.setLevel(logging.ERROR)
     logger.addHandler(error_file_handler)
@@ -39,7 +41,7 @@ User = namedtuple('User', 'user password')
 FORMAT_EXCEL = 'xlsx'
 FORMAT_CSV = 'csv'
 FORMAT_JSON = 'json'
-
+WORKERS = 50 # don't go above 50 or it will exhaust the urllib connection pool in requests which is set to 50
 
 class McxCli():
     """ Context object for command line arguments
@@ -105,6 +107,7 @@ def cli(ctx, instance, company, credentials, user, password, format, debug):
 def cases(mcxcli, case_ids):
     """Exports detailed information about active cases assigned to users
     """
+    start_time = time.time()
     file = "cases.{}".format(mcxcli.format)
     users = __users_from_options(mcxcli)
     if len(users) == 1:
@@ -113,27 +116,42 @@ def cases(mcxcli, case_ids):
         click.echo('Exporting cases assigned to users in {} from {} to {}'.format(mcxcli.credentials, mcxcli.company, file))
 
     try:
-        cases = []
         for user in users:
             click.echo('Exporting cases assigned to {}'.format(user.user))
             api = __init_api(mcxcli.instance, mcxcli.company, user.user, user.password)
             ids = case_ids
             if not ids:
                 ids = api.get_case_inbox().ids
-
             click.echo('CaseIDs to export: {}'.format(ids))
-
-            i = 1
-            for case_id in ids:
-                click.echo('Exporting CaseId: {} ({} of {})'.format(case_id, i, len(ids)))
-                cases.append(api.get_case(case_id))
-                i = i + 1
     except McxError as e:
         logging.error(e, exc_info=mcxcli.debug)
         raise click.Abort()
-    else:
-        output = __cases_to_columnar_format(file, cases)
-        __write_to_file(mcxcli, file, output.fieldnames, output.rows)
+
+    with ThreadPoolExecutor(max_workers=WORKERS) as executor:
+        click.echo('Scheduling case fetching on {} workers'.format(WORKERS))
+        future_to_case = {executor.submit(api.get_case, case_id): case_id for case_id in ids}
+        cases = []
+        errors = []
+        i = 1
+        for future in as_completed(future_to_case):
+            try:
+                case_id = future_to_case[future]
+                case = future.result()
+                cases.append(case)
+                click.echo('Exporting CaseId: {} ({} of {})'.format(case.case_id, i, len(ids)))
+            except McxError as e:
+                errors.append(case_id)
+                logging.error(e, exc_info=mcxcli.debug)
+            i = i + 1
+
+    output = __cases_to_columnar_format(file, cases)
+    __write_to_file(mcxcli, file, output.fieldnames, output.rows)
+    if len(errors):
+        logging.error("Could not fetch case for the following case_ids (see error log for details): {}".format(errors))
+
+    end_time = time.time()
+    time_elapsed = end_time-start_time
+    click.echo('Time taken: {} seconds'.format(int(time_elapsed)))
 
 
 @cli.command()

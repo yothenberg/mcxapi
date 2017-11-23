@@ -40,15 +40,22 @@ class McxApi:
     RETRY_COUNT = 3
     PASSWORD_KEY = "password"
     TOKEN_KEY = "token"
+    PAGE_SIZE = 500
+    PAGES = 199
 
-    def __init__(self, instance, company, user, password, headers=None):
+    def __init__(self, instance, company, user, password, headers=None, pool_connections=50):
         self.instance = instance
         self.company = company
         self.user = user
         self.password = password
-        self.session = requests.Session()
+        self.session = requests.Session()        
+        adapter = requests.adapters.HTTPAdapter(pool_connections=pool_connections, pool_maxsize=pool_connections)
+        self.session.mount('http://', adapter)
+        self.session.mount('https://', adapter)
         self.session.headers = headers
         self.token = None
+        print("Connection timeout: {}".format(self.TIMEOUT))
+
 
     def _sanitize_json_for_logging(self, json):
         json_copy = json.copy()
@@ -70,16 +77,15 @@ class McxApi:
         retries = self.RETRY_COUNT + 1
         while retries:
             try:
-                print("Timeout: {}".format(self.TIMEOUT))
                 r = self.session.post(url, params=params, json=json, timeout=self.TIMEOUT)
                 r.raise_for_status()
             except requests.exceptions.Timeout as e:
                 retries -= 1
                 if retries == 0:
-                    raise McxNetworkError(url, e)
+                    raise McxNetworkError(url, e, json=self._sanitize_json_for_logging(json))
                 logging.info("RETRYING: url: {} json: {}".format(url, self._sanitize_json_for_logging(json)))
             except requests.exceptions.RequestException as e:
-                raise McxNetworkError(url, e)
+                raise McxNetworkError(url, e, json=self._sanitize_json_for_logging(json))
             else:
                 retries = 0
 
@@ -101,10 +107,10 @@ class McxApi:
         cases = []
         url = self._url("getMobileCaseInboxItems")
         # Fetches 50 at a time up to a maximum of 100,000 cases
-        for p in range(0, 199):
+        for p in range(0, self.PAGES):
             start_count = len(case_ids)
-            payload = {'startPage': p, 'pageSize': 50}
-            print("Fetching {} 50 case_ids from inbox".format(ordinal(p + 1)))
+            payload = {'startPage': p, 'pageSize': self.PAGE_SIZE}
+            print("Fetching {} {} case_ids from inbox".format(ordinal(p + 1), self.PAGE_SIZE))
             json = self._post(url, json=payload)
             self.parse_case_inbox(json, case_ids, fieldnames, cases)
             if len(case_ids) == start_count:
