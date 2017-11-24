@@ -2,6 +2,8 @@ import logging
 import requests
 import re
 
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 from datetime import datetime, timezone, timedelta
 from collections import namedtuple
 from anytree import RenderTree, NodeMixin
@@ -48,14 +50,19 @@ class McxApi:
         self.company = company
         self.user = user
         self.password = password
-        self.session = requests.Session()        
-        adapter = requests.adapters.HTTPAdapter(pool_connections=pool_connections, pool_maxsize=pool_connections)
+        self.session = requests.Session()
+        # 500 Internal Service Error
+        # 501 Not Implemented
+        # 502 Bad Gateway
+        # 503 Service Unavailable
+        # 504 Gateway Timeout
+        retries = Retry(total=self.RETRY_COUNT, backoff_factor=1, status_forcelist=[500, 501, 502, 503, 504], method_whitelist=['GET', 'POST'])
+        adapter = HTTPAdapter(pool_connections=pool_connections, pool_maxsize=pool_connections, max_retries=retries)
         self.session.mount('http://', adapter)
         self.session.mount('https://', adapter)
         self.session.headers = headers
         self.token = None
-        print("Connection timeout: {}".format(self.TIMEOUT))
-
+        print("HTTP connection timeout: {}, retry count: {}".format(self.TIMEOUT, self.RETRY_COUNT))
 
     def _sanitize_json_for_logging(self, json):
         json_copy = json.copy()
@@ -74,20 +81,11 @@ class McxApi:
             json[self.TOKEN_KEY] = self.token
 
         logging.info("POST: url: {} json: {}".format(url, self._sanitize_json_for_logging(json)))
-        retries = self.RETRY_COUNT + 1
-        while retries:
-            try:
-                r = self.session.post(url, params=params, json=json, timeout=self.TIMEOUT)
-                r.raise_for_status()
-            except requests.exceptions.Timeout as e:
-                retries -= 1
-                if retries == 0:
-                    raise McxNetworkError(url, e, json=self._sanitize_json_for_logging(json))
-                logging.info("RETRYING: url: {} json: {}".format(url, self._sanitize_json_for_logging(json)))
-            except requests.exceptions.RequestException as e:
-                raise McxNetworkError(url, e, json=self._sanitize_json_for_logging(json))
-            else:
-                retries = 0
+        try:
+            r = self.session.post(url, params=params, json=json, timeout=self.TIMEOUT)
+            r.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            raise McxNetworkError(url, json=self._sanitize_json_for_logging(json)) from e
 
         return r.json()
 
@@ -145,7 +143,7 @@ class McxApi:
                     case_ids.append(case_id)
                     cases.append(case)
         except Exception as e:
-            raise McxParsingError(json, e, "Unable to parse inbox")
+            raise McxParsingError(json, "Unable to parse inbox") from e
 
     def get_case(self, case_id):
         """ Fetches detailed information about a case
@@ -156,7 +154,7 @@ class McxApi:
         try:
             case = Case(json["GetCaseViewResult"])
         except Exception as e:
-            raise McxParsingError(json, e, "Unable to parse case {}".format(case_id))
+            raise McxParsingError(json, "Unable to parse case {}".format(case_id)) from e
 
         return case
 
